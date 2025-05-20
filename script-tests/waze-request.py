@@ -1,6 +1,6 @@
 # IMPORTS..
 import requests
-from bounding_box_enum import BoundingBoxEnum
+from _enums import LocationEnum
 import time
 import json
 
@@ -25,23 +25,21 @@ def get_request_headers ():
         "referer": WAZE_REFERER
     }
 
-def get_request_parameters (bouding_box):
+
+def get_request_parameters (location):
     return {
-        "top": bouding_box.value[0],
-        "bottom": bouding_box.value[1],
-        "left": bouding_box.value[2],
-        "right": bouding_box.value[3],
+        "top": location.value[0],
+        "bottom": location.value[1],
+        "left": location.value[2],
+        "right": location.value[3],
         "env": "row",
         "types": "alerts,traffic,users"
     }
-    
 
-def store_response_as_json (response):
-    # Get the response body as JSON..
-    data = response.json()
-    
+
+def store_response_as_json (data):    
     int_timestamp = int(time.time())    
-    file_name = f"response_{int_timestamp}.json"
+    file_name = f"waze_response_{int_timestamp}.json"
 
     with open(file_name, "w") as f:
         json.dump(data, f, indent=4)
@@ -49,13 +47,24 @@ def store_response_as_json (response):
     print(f"Saved the response information to {file_name}")
 
 
-for bounding_box in BoundingBoxEnum:
-    params = get_request_parameters(bounding_box)
+for location in LocationEnum:
+    params = get_request_parameters(location)
     headers = get_request_headers()
     
-    print(f"\n\nFetching Waze Data for {bounding_box.name}..")
+    print(f"\n\nFetching Waze Data for {location.name}..")
     response = requests.get(WAZE_ENDPOINT, headers=headers, params=params)
 
     # Just for debugging..    
     print("Status code:", response.status_code)
-    store_response_as_json(response)
+    
+    data = response.json()
+    store_response_as_json(data)
+    
+    alerts = data["alerts"]
+    jams = data["jams"]
+    users = data["users"]
+    
+    print("\nFound Information:")
+    print(f"- Total Alerts: {len(alerts)}")
+    print(f"- Total Users: {len(users)}")
+    print(f"- Total Jams: {len(jams)}")
