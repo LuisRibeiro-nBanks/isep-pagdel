@@ -46,14 +46,17 @@ services:
 
   postgres:
     image: postgres:13
-    container_name: superset-postgres
+    container_name: postgres
     restart: always
     environment:
-      POSTGRES_DB: superset
-      POSTGRES_USER: superset
-      POSTGRES_PASSWORD: superset
+      POSTGRES_DB: postgresDB
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+
 
   superset:
     image: apache/superset
@@ -64,13 +67,14 @@ services:
     environment:
       - SUPERSET_LOAD_EXAMPLES=no
       - SUPERSET_SECRET_KEY=supersecretkey
-      - SQLALCHEMY_DATABASE_URI=postgresql://superset:superset@superset-postgres:5432/superset
+      - SQLALCHEMY_DATABASE_URI=postgresql://admin:admin@postgres:5432/postgresDB
     depends_on:
       - postgres
     volumes:
       - ./superset:/app/superset_home
-      - ./scripts:/scripts   # Monta a pasta scripts no container
-    entrypoint: ["/bin/bash", "-c", "/scripts/superset_init.sh && superset run -h 0.0.0.0 -p 8088"]
+      - ./scripts:/scripts
+    command: ["/bin/bash", "-c", "/scripts/superset_init.sh && superset run -h 0.0.0.0 -p 8088"]
+
 
 volumes:
   postgres-data:
