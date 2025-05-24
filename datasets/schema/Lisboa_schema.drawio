@@ -1,0 +1,42 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36" version="26.2.6">
+  <diagram name="Page-1" id="wv-yWC4v_q_K-42xPpzR">
+    <mxGraphModel dx="1044" dy="596" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="UjcJU8ZWNqMab3md5jQs-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="UjcJU8ZWNqMab3md5jQs-2" target="UjcJU8ZWNqMab3md5jQs-5">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="640" y="330" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="500" y="330" />
+              <mxPoint x="690" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="UjcJU8ZWNqMab3md5jQs-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.573;entryY=0.982;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="UjcJU8ZWNqMab3md5jQs-2" target="UjcJU8ZWNqMab3md5jQs-7">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="200" y="355" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="199" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="UjcJU8ZWNqMab3md5jQs-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="UjcJU8ZWNqMab3md5jQs-2" target="UjcJU8ZWNqMab3md5jQs-10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="UjcJU8ZWNqMab3md5jQs-2" value="&lt;div&gt;datetime_id(FK)&lt;br&gt;location_id (FK)&lt;/div&gt;&lt;div&gt;parameter_id&lt;/div&gt;&lt;div&gt;value&lt;/div&gt;&lt;div&gt;unit&lt;/div&gt;&lt;div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="380" y="300" width="120" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="UjcJU8ZWNqMab3md5jQs-5" value="datetime_id (PK)&lt;div&gt;datetime&lt;br&gt;&lt;div&gt;hour&lt;/div&gt;&lt;div&gt;day&lt;/div&gt;&lt;div&gt;month&lt;/div&gt;&lt;div&gt;year&lt;/div&gt;&lt;div&gt;is_weekend&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="630" y="155" width="120" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="UjcJU8ZWNqMab3md5jQs-7" value="location_id (PK)&lt;div&gt;name&lt;/div&gt;&lt;div&gt;latitude&lt;/div&gt;&lt;div&gt;longitude&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="130" y="170" width="120" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="UjcJU8ZWNqMab3md5jQs-10" value="parameter_id(PK)&lt;div&gt;parameter_name&lt;/div&gt;&lt;div&gt;type&lt;/div&gt;&lt;div&gt;unit&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="380" y="540" width="120" height="110" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
