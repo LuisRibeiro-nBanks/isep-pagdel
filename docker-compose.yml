@@ -20,8 +20,6 @@ services:
       - KAFKA_BROKER_ID=1
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
       - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
-      # Only uncomment this when the Python Scripts are inside of Docker..
-      # - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
       - ALLOW_PLAINTEXT_LISTENER=yes
 
@@ -31,11 +29,23 @@ services:
     environment:
       - SPARK_MODE=master
       - SPARK_MASTER_HOST=spark
+      - SPARK_CONF_DIR=/opt/bitnami/spark/conf
+      # --- Delta Lake Configuration (Relying only on mounted JARs) ---
+      # REMOVED: SPARK_JARS_PACKAGES=io.delta:delta-spark_2.12:3.3.0
+      # REMOVED: SPARK_SUBMIT_OPTIONS=--packages io.delta:delta-spark_2.12:3.3.0
+      # Explicitly add JARs from the mounted volume to the classpath
+      - SPARK_DRIVER_CLASS_PATH=/opt/bitnami/spark/custom-jars/*:/opt/bitnami/spark/conf
+      - SPARK_EXECUTOR_EXTRA_CLASSPATH=/opt/bitnami/spark/custom-jars/*
+      # Still need to explicitly enable Delta extensions and catalog
+      - SPARK_SUBMIT_ARGS=--conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog
+      # --- End Delta Lake Configuration ---
     ports:
-      - "8080:8080"
-      - "7077:7077"  # <- add this!
+      - "8085:8080" # Spark Master Web UI
+      - "7077:7077" # Spark Master Port
     volumes:
       - ./data:/data
+      - ./spark-config:/opt/bitnami/spark/conf
+      - ./spark-jars:/opt/bitnami/spark/custom-jars # Your Delta JARs
 
   spark-worker:
     image: bitnami/spark:3.3.1
@@ -43,10 +53,42 @@ services:
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark:7077
+      - SPARK_CONF_DIR=/opt/bitnami/spark/conf
+      # --- Delta Lake Configuration (Relying only on mounted JARs) ---
+      # REMOVED: SPARK_JARS_PACKAGES=io.delta:delta-spark_2.12:3.3.0
+      # Explicitly add JARs from the mounted volume to the classpath
+      - SPARK_EXECUTOR_EXTRA_CLASSPATH=/opt/bitnami/spark/custom-jars/*
+      # --- End Delta Lake Configuration ---
     depends_on:
       - spark
     ports:
-      - "8081:8081"
+      - "8081:8081" # Spark Worker Web UI
+    volumes:
+      - ./data:/data
+      - ./spark-config:/opt/bitnami/spark/conf
+      - ./spark-jars:/opt/bitnami/spark/custom-jars # Your Delta JARs
+
+  jupyter:
+    image: jupyter/pyspark-notebook:spark-3.3.1
+    container_name: jupyter-notebook
+    ports:
+      - "8888:8888" # Jupyter Notebook UI
+    environment:
+      - SPARK_MASTER=spark://spark:7077
+      - JUPYTER_ENABLE_LAB=yes
+      # --- Delta Lake Configuration (Relying only on mounted JARs for PySpark) ---
+      # REMOVED: --packages io.delta:delta-spark_2.12:3.3.0
+      # Pass custom JAR path to PySpark
+      - PYSPARK_SUBMIT_ARGS=--driver-class-path /home/jovyan/custom-jars/* --conf spark.executor.extraClassPath=/home/jovyan/custom-jars/* --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog pyspark-shell
+      # - PYSPARK_SUBMIT_ARGS=--driver-class-path /home/jovyan/custom-jars/* --conf spark.executor.extraClassPath=/home/jovyan/custom-jars/* --conf spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog pyspark-shell
+      # --- End Delta Lake Configuration ---
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./data:/home/jovyan/data
+      - ./spark-jars:/home/jovyan/custom-jars # Your Delta JARs
+    depends_on:
+      - spark
+    working_dir: /home/jovyan/work
 
   postgres:
     image: postgres:13
@@ -77,14 +119,6 @@ services:
       - ./superset:/app/superset_home
       - ./scripts:/scripts
     command: ["/bin/bash", "-c", "/scripts/superset_init.sh && superset run -h 0.0.0.0 -p 8088"]
-
-  zeppelin:
-    image: anaalmeida/zeppelin-deequ-arm
-    ports:
-      - 8080:8080
-      - 9080:9080
-    volumes:
-      - ./data/zeppelin:/opt/zeppelin/notebook
 
   prefect-server:
     image: prefecthq/prefect:2-latest
