@@ -20,7 +20,9 @@ services:
       - KAFKA_BROKER_ID=1
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
       - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      # Only uncomment this when the Python Scripts are inside of Docker..
+      # - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
       - ALLOW_PLAINTEXT_LISTENER=yes
 
   spark:
@@ -28,8 +30,10 @@ services:
     container_name: spark
     environment:
       - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark
     ports:
       - "8080:8080"
+      - "7077:7077"  # <- add this!
     volumes:
       - ./data:/data
 
@@ -57,7 +61,6 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
-
   superset:
     image: apache/superset
     container_name: superset
@@ -75,6 +78,34 @@ services:
       - ./scripts:/scripts
     command: ["/bin/bash", "-c", "/scripts/superset_init.sh && superset run -h 0.0.0.0 -p 8088"]
 
+  zeppelin:
+    image: anaalmeida/zeppelin-deequ-arm
+    ports:
+      - 8080:8080
+      - 9080:9080
+    volumes:
+      - ./data/zeppelin:/opt/zeppelin/notebook
+
+  prefect-server:
+    image: prefecthq/prefect:2-latest
+    container_name: prefect-server
+    command: prefect server start
+    ports:
+      - "4200:4200"
+    volumes:
+      - prefect-vol:/root/.prefect
+
+  prefect-agent:
+    image: prefecthq/prefect:2-latest
+    container_name: prefect-agent
+    depends_on:
+      - prefect-server
+    command: prefect agent start -q default
+    volumes:
+      - ./flows:/flows
+      - prefect-vol:/root/.prefect
+    working_dir: /flows
 
 volumes:
   postgres-data:
+  prefect-vol:
