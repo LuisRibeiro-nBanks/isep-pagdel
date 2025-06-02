@@ -65,6 +65,7 @@ def clean_traffic_data(road_DF, total_traffic_DF):
         return cleaned_road_DF
 
 
+
 def clean_data(air_folder, traffic_folder):
     total_air_DF = pd.DataFrame
     total_traffic_DF = pd.DataFrame
@@ -87,7 +88,9 @@ def clean_data(air_folder, traffic_folder):
     #------------------------------- COMBINING DATASETS -------------------------------#
     combined_DF = pd.concat([total_air_DF, total_traffic_DF], ignore_index=True)
     print(combined_DF)
-    combined_DF.to_csv('Result.csv')
+    combined_DF.to_csv(r'..\datasets\results\Result.csv')
+    
+    
 
 
 
