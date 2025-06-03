@@ -53,3 +53,49 @@ clear; docker-compose down -v; clear; echo "Docker Image is Down"; sleep 2; clea
 **Superset:**
 - User: `admin`
 - Password: `admin`
+
+
+
+### 2. Update Result Dataset
+
+>**⚠️ Warning:** If you find any issue related to the *Google Services*, contact the project infrastructure team to ensure that the Google Drive link is still valid and accessible, or if your *Google* account is able to connect to the projet.
+
+To update the result dataset you should run the `test_drive.py` script.
+This script will download the latest dataset from the Google Drive link and update the result dataset in the project.
+
+This script will also update the `result_dataset.csv` file in the project directory, if such action is requested through the `--mode upload` argument.
+
+The arguments that can be passed to the script are:
+- `--mode`: The mode of the script. It can be `download` or `upload`.
+- `--file`: The path to the file to be uploaded/downloaded.
+
+To run the script, you can use the following command:
+```
+python test_drive.py --mode MODE --file FILE_PATH
+```
+
+
+
+
+### 3. Packages
+
+This chapter defines the packages used in the project.
+The following packages are used in the project and should be installed in your environment to run the project successfully:
+
+- `numpy`
+- `pyspark`
+- `json`
+- `time`
+- `os`
+- `pandas`
+- `requests`
+- `gdown`
+- `google-api-python-client` 
+- `google-auth-httplib2` 
+- `google-auth-oauthlib`
+- `argparse`
+
+To install the packages, you can run the following command:
+```
+pip install -r requirements.txt
+```
