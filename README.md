@@ -50,4 +50,6 @@ clear; docker-compose down -v; clear; echo "Docker Image is Down"; sleep 2; clea
 <br>
 
 ##### 1.3. Credentials
-Superset Credentials: admin | admin
+**Superset:**
+- User: `admin`
+- Password: `admin`
