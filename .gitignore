@@ -1,3 +1,6 @@
 script-tests/__pycache__
 *.json
 data/*
+*.csv
+*.xls
+*.xlsx
