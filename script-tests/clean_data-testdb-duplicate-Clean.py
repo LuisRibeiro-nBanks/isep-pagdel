@@ -25,7 +25,7 @@ def clean_air_data(air_DF, total_air_DF):
     # Check if the date corresponds to a weekend
     cleaned_air_DF['is_weekend'] = cleaned_air_DF['DTM_UTC'].dt.weekday >= 5
 
-    if not(total_air_DF.empty) != None:
+    if not(total_air_DF.empty):
         return pd.concat([cleaned_air_DF, total_air_DF], ignore_index=True)
     else:
         return cleaned_air_DF
@@ -204,7 +204,7 @@ def clean_data(air_folder, traffic_folder):
         for filename in filenames:
             air_path = os.path.join(dirpath, filename)
             air_DF = pd.read_csv(air_path)
-
+            #print('############################################', air_path)
             total_air_DF = clean_air_data(air_DF, total_air_DF)
 
 
