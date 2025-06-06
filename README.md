@@ -48,6 +48,32 @@ clear; docker-compose down -v; clear; echo "Docker Image is Down"; sleep 2; clea
 ``` 
 
 <br>
+5. Access the Prefect-Server Image:
+```
+docker exec -it prefect-agent /bin/bash      
+```
+
+<br>
+6. Install the Python Packages:
+```
+pip install -r requirements.txt
+```
+
+<br>
+7. Install Java's JDK:
+```
+apt-get update && apt-get install -y openjdk-17-jdk && apt-get clean && rm -rf /var/lib/apt/lists/*
+```
+
+<br>
+8. Register the batch process to prefect:
+```
+prefect deployment build batch_flow.py:batch_data_flow -n "batch-flow"
+prefect deployment apply batch_data_flow-deployment.yaml
+prefect deployment run "Batch Flow/batch-flow"
+```
+
+<br>
 
 ##### 1.3. Credentials
 **Superset:**
@@ -73,7 +99,6 @@ To run the script, you can use the following command:
 ```
 python test_drive.py --mode MODE --file FILE_PATH
 ```
-
 
 
 
