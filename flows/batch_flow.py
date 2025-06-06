@@ -1,14 +1,19 @@
 from prefect import flow, task
 from utils.postgres import write_to_postgres
-from utils.transformations import transform_batch_data
+from utils.transformations import transform_batch_data, clean_data
 
 @task
 def ingest_batch_data():
-    return [(1, "A", 100), (2, "B", 200), (3, "C", 300)]
+    air_folder = "/flows/datasets/air-quality"
+    traffic_folder = "/flows/datasets/road-traffic"
+    return [air_folder, traffic_folder]
 
 @task
-def transform(data):
-    return transform_batch_data(data)
+def transform(data_location):
+    air_folder = data_location[0]
+    traffic_folder = data_location[1]
+    return clean_data(air_folder, traffic_folder)
+    #return transform_batch_data(data)
 
 @task
 def load_to_postgres(data):
@@ -16,6 +21,6 @@ def load_to_postgres(data):
 
 @flow(name="Batch Flow")
 def batch_data_flow():
-    raw_data = ingest_batch_data()
-    transformed = transform(raw_data)
+    data_location = ingest_batch_data()
+    transformed = transform(data_location)
     load_to_postgres(transformed)
