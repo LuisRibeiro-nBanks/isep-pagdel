@@ -108,11 +108,12 @@ services:
   prefect-server:
     image: prefecthq/prefect:2-latest
     container_name: prefect-server
-    command: prefect server start
+    command: prefect server start --host 0.0.0.0 --port 4200
     ports:
       - "4200:4200"
     volumes:
       - prefect-vol:/root/.prefect
+
 
   prefect-agent:
     image: prefecthq/prefect:2-latest
