@@ -79,6 +79,13 @@ prefect deployment run "Batch Flow/batch-flow"
 
 <br>
 
+9. After this, access Postgres and check if the data was inserted:
+```
+docker exec -it postgres psql -U admin -d postgresDB
+```
+
+<br>
+
 ##### 1.3. Credentials
 **Superset:**
 - User: `admin`
