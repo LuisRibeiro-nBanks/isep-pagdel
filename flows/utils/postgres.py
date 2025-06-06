@@ -1,93 +1,78 @@
-import psycopg2
-from sqlalchemy import create_engine
-from pyspark.sql import DataFrame
+from pyspark.sql import SparkSession, DataFrame
 import pandas as pd
-import numpy as np
+from prefect import get_run_logger
+from pyspark import SparkContext
 
-def write_to_postgres(full_DF, table_name):
-    db_url = "postgresql+psycopg2://admin:admin@postgres:5432/postgresDB"
-    engine = create_engine(db_url)
-    
-    conn = psycopg2.connect(
-        dbname="postgresDB",
-        user="admin",
-        password="admin",
-        host="postgres",
-        port=5432
+
+def get_spark_session():
+    # If there is an active SparkContext, stop it first to avoid 'stopped SparkContext' issues
+    try:
+        sc = SparkContext.getOrCreate()
+        if sc._jsc.sc().isStopped():
+            sc.stop()
+    except Exception:
+        # No active SparkContext or unable to get one; ignore and create new
+        pass
+
+    spark = SparkSession.builder \
+        .appName("PostgresWriter") \
+        .master("spark://spark:7077") \
+        .config("spark.jars", "/custom-jars/postgresql-42.6.0.jar") \
+        .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
+        .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog") \
+        .getOrCreate()
+
+    return spark
+
+
+def write_to_postgres(full_DF: pd.DataFrame, table_name: str):
+    logger = get_run_logger()
+
+    # Use the global SparkSession instance
+    spark = get_spark_session()
+
+    db_properties = {
+        "url": "jdbc:postgresql://postgres:5432/postgresDB",
+        "user": "admin",
+        "password": "admin",
+        "driver": "org.postgresql.Driver"
+    }
+
+    logger.info("Converting full_DF to Spark DataFrame...")
+    spark_df = spark.createDataFrame(full_DF)
+
+    logger.info("Converting datetime column and extracting time components...")
+    spark_df = spark_df.withColumn("datetime", spark_df["DTM_UTC"].cast("timestamp"))
+
+    from pyspark.sql.functions import hour, dayofmonth, month, year, dayofweek, col
+
+    spark_df = spark_df.withColumn("hour", hour(col("datetime"))) \
+                       .withColumn("day", dayofmonth(col("datetime"))) \
+                       .withColumn("month", month(col("datetime"))) \
+                       .withColumn("year", year(col("datetime"))) \
+                       .withColumn("is_weekend", (dayofweek(col("datetime")) >= 6).cast("boolean"))
+
+    spark_df = spark_df.withColumnRenamed("UNIDADE", "unit") \
+                       .withColumnRenamed("Type", "sensor_type") \
+                       .withColumnRenamed("PARAMETRO", "parameter_name") \
+                       .withColumnRenamed("VALOR", "value") \
+                       .withColumnRenamed("LOCAL", "name") \
+                       .withColumnRenamed("LATITUDE", "latitude") \
+                       .withColumnRenamed("LONGITUDE", "longitude") \
+                       .withColumnRenamed("type", "sensor_type")
+
+    logger.info(f"Writing data to {table_name} using Spark JDBC...")
+    spark_df.write.jdbc(
+        url=db_properties["url"],
+        table=table_name,
+        mode="append",
+        properties={k: v for k, v in db_properties.items() if k != "url"}
     )
 
-    cursor = conn.cursor()
-
-    full_DF["datetime"] = pd.to_datetime(full_DF["DTM_UTC"])
-    full_DF["unit"] = full_DF["UNIDADE"]
-
-    location_df = full_DF[["LOCAL", "LATITUDE", "LONGITUDE", "Type"]].drop_duplicates().reset_index(drop=True)
-    location_df.rename(columns={"LOCAL": "name", "LATITUDE": "latitude", "LONGITUDE": "longitude", "Type": "sensor_type"}, inplace=True)
-    location_df = get_or_create_ids(location_df, engine, cursor, "Location", ["name", "latitude", "longitude", "sensor_type"], "location_id")
-
-    datetime_df = full_DF[["datetime", "HOUR", "DAY", "MONTH", "YEAR", "is_weekend"]].drop_duplicates().reset_index(drop=True)
-    datetime_df.rename(columns={"HOUR":"hour", "DAY":"day", "MONTH":"month", "YEAR":"year"}, inplace=True)
-    datetime_df = get_or_create_ids(datetime_df, engine, cursor, "Datetime", ["datetime", "hour", "day", "month", "year", "is_weekend"], "datetime_id")
-
-    parameter_df = full_DF[["PARAMETRO", "unit", "Type"]].drop_duplicates().reset_index(drop=True)
-    parameter_df.rename(columns={"PARAMETRO": "parameter_name", "Type": "type"}, inplace=True)
-    parameter_df = get_or_create_ids(parameter_df, engine, cursor, "Parameter", ["parameter_name", "unit", "type"], "parameter_id")
-
-    full_DF.rename(columns={"LOCAL": "name", "LATITUDE": "latitude", "LONGITUDE": "longitude", "PARAMETRO": "parameter_name", "Type": "type"}, inplace=True)
-
-    full_DF = full_DF.merge(location_df, on=["name", "latitude", "longitude", "sensor_type"])
-    full_DF = full_DF.merge(datetime_df, on=["datetime", "hour", "day", "month", "year", "is_weekend"])
-    full_DF = full_DF.merge(parameter_df, on=["parameter_name", "unit", "type"])
-
-    fact_df = full_DF[["datetime_id", "location_id", "parameter_id", "VALOR", "unit"]].rename(columns={"VALOR": "value"})
-    fact_df = fact_df.drop_duplicates(subset=["datetime_id", "location_id", "parameter_id"])
-
-    validate_fact(fact_df, engine)
-
-    #for row in data:
-    #    cur.execute(f"INSERT INTO {table_name} VALUES (%s, %s, %s)", row)
-   
-    conn.commit()
-    cursor.close()
-    conn.close()
+    logger.info(f"✅ Data successfully written to {table_name}.")
 
 
-
-def get_or_create_ids(df, engine, cursor, table_name, unique_cols, id_col):
-    if table_name == "Datetime":
-        existing = pd.read_sql(f"SELECT {id_col}, {', '.join(unique_cols)} FROM {table_name}", engine, parse_dates=["datetime"])
-    else:
-        existing = pd.read_sql(f"SELECT {id_col}, {', '.join(unique_cols)} FROM {table_name}",engine)
-
-    merged = df.merge(existing, on=unique_cols, how="left")
-    new_rows = merged[merged[id_col].isna()].copy()
-
-    if not new_rows.empty:
-        cursor.execute(f"SELECT MAX({id_col}) FROM {table_name}")
-        max_id = cursor.fetchone()[0] or 0
-        new_rows[id_col] = range(max_id + 1, max_id + 1 + len(new_rows))
-        insert_cols = [id_col] + unique_cols
-        try:
-            new_rows[insert_cols].to_sql(table_name, engine, index=False, if_exists="append", method='multi')
-        except Exception as e:
-            print(f"Error inserting into {table_name}: {e}")
-            raise
-
-    return pd.concat([merged[merged[id_col].notna()], new_rows], ignore_index=True)
-
-
-
-
-def validate_fact(fact_df, engine):
-    query = "SELECT datetime_id, location_id, parameter_id FROM Fact_Measurements"
-    existing_facts = pd.read_sql(query, engine)
-
-    fact_df = fact_df.merge(existing_facts, on=["datetime_id", "location_id", "parameter_id"], how="left", indicator=True)
-    fact_df = fact_df[fact_df["_merge"] == "left_only"].drop(columns=["_merge"])
-
-    if not fact_df.empty:
-        print(f"Fact_Measurements: {fact_df.shape[0]} new rows added.")
-        fact_df.to_sql("Fact_Measurements", engine, index=False, if_exists="append", method='multi')
-    else:
-        print("No new measurements to insert.")
-
+# Example usage
+if __name__ == "__main__":
+    df = pd.read_csv("your_input_data.csv")  # Replace with your actual data source
+    write_to_postgres(df, table_name="staging_batch_table")

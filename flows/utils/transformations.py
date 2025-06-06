@@ -136,8 +136,6 @@ def clean_data(air_folder, traffic_folder):
     for dirpath, dirnames, filenames in os.walk(air_folder):
         for filename in filenames:
             air_path = os.path.join(dirpath, filename)
-            logger.info(f"Air DF\n{air_path}")
-
             air_DF = pd.read_csv(air_path)
             total_air_DF = clean_air_data(air_DF, total_air_DF)
 
@@ -148,8 +146,6 @@ def clean_data(air_folder, traffic_folder):
             total_traffic_DF = clean_traffic_data(traffic_DF, total_traffic_DF)
 
     combined_DF = pd.concat([total_air_DF, total_traffic_DF], ignore_index=True)
-
-
     logger.info(f"\n{combined_DF.head(10)}")
     return combined_DF
     #send_data(combined_DF)
