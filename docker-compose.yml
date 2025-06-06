@@ -8,6 +8,9 @@ services:
       - "2181:2181"
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - app-network
+    restart: unless-stopped
 
   kafka:
     image: bitnami/kafka:3.3.1
@@ -20,8 +23,11 @@ services:
       - KAFKA_BROKER_ID=1
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
       - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
       - ALLOW_PLAINTEXT_LISTENER=yes
+    networks:
+      - app-network
+    restart: unless-stopped
 
   spark:
     image: bitnami/spark:3.3.1
@@ -39,7 +45,10 @@ services:
     volumes:
       - ./data:/data
       - ./spark-config:/opt/bitnami/spark/conf
-      - ./spark-jars:/opt/bitnami/spark/custom-jars # Your Delta JARs
+      - ./spark-jars:/opt/bitnami/spark/custom-jars
+    networks:
+      - app-network
+    restart: unless-stopped
 
   spark-worker:
     image: bitnami/spark:3.3.1
@@ -56,7 +65,10 @@ services:
     volumes:
       - ./data:/data
       - ./spark-config:/opt/bitnami/spark/conf
-      - ./spark-jars:/opt/bitnami/spark/custom-jars # Your Delta JARs
+      - ./spark-jars:/opt/bitnami/spark/custom-jars
+    networks:
+      - app-network
+    restart: unless-stopped
 
   jupyter:
     image: jupyter/pyspark-notebook:spark-3.3.1
@@ -74,11 +86,13 @@ services:
     depends_on:
       - spark
     working_dir: /home/jovyan/work
+    networks:
+      - app-network
+    restart: unless-stopped
 
   postgres:
     image: postgres:13
     container_name: postgres
-    restart: always
     environment:
       POSTGRES_DB: postgresDB
       POSTGRES_USER: admin
@@ -87,11 +101,13 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
 
   superset:
     image: apache/superset
     container_name: superset
-    restart: always
     ports:
       - "8088:8088"
     environment:
@@ -103,7 +119,10 @@ services:
     volumes:
       - ./superset:/app/superset_home
       - ./scripts:/scripts
-    command: ["/bin/bash", "-c", "/scripts/superset_init.sh && superset run -h 0.0.0.0 -p 8088"]
+    command: ["/bin/bash", "-c", "/scripts/superset_init.sh && exec superset run -h 0.0.0.0 -p 8088"]
+    networks:
+      - app-network
+    restart: unless-stopped
 
   prefect-server:
     image: prefecthq/prefect:2-latest
@@ -113,7 +132,9 @@ services:
       - "4200:4200"
     volumes:
       - prefect-vol:/root/.prefect
-
+    networks:
+      - app-network
+    restart: unless-stopped
 
   prefect-agent:
     image: prefecthq/prefect:2-latest
@@ -125,7 +146,14 @@ services:
       - ./flows:/flows
       - prefect-vol:/root/.prefect
     working_dir: /flows
+    networks:
+      - app-network
+    restart: unless-stopped
 
 volumes:
   postgres-data:
   prefect-vol:
+
+networks:
+  app-network:
+    driver: bridge
