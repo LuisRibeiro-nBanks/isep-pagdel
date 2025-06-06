@@ -1,9 +1,13 @@
 import psycopg2
+from sqlalchemy import create_engine
 from pyspark.sql import DataFrame
 import pandas as pd
 import numpy as np
 
 def write_to_postgres(full_DF, table_name):
+    db_url = "postgresql+psycopg2://admin:admin@postgres:5432/postgresDB"
+    engine = create_engine(db_url)
+    
     conn = psycopg2.connect(
         dbname="postgresDB",
         user="admin",
@@ -19,15 +23,15 @@ def write_to_postgres(full_DF, table_name):
 
     location_df = full_DF[["LOCAL", "LATITUDE", "LONGITUDE", "Type"]].drop_duplicates().reset_index(drop=True)
     location_df.rename(columns={"LOCAL": "name", "LATITUDE": "latitude", "LONGITUDE": "longitude", "Type": "sensor_type"}, inplace=True)
-    location_df = get_or_create_ids(location_df, conn, cursor, "Location", ["name", "latitude", "longitude", "sensor_type"], "location_id")
+    location_df = get_or_create_ids(location_df, engine, cursor, "Location", ["name", "latitude", "longitude", "sensor_type"], "location_id")
 
     datetime_df = full_DF[["datetime", "HOUR", "DAY", "MONTH", "YEAR", "is_weekend"]].drop_duplicates().reset_index(drop=True)
     datetime_df.rename(columns={"HOUR":"hour", "DAY":"day", "MONTH":"month", "YEAR":"year"}, inplace=True)
-    datetime_df = get_or_create_ids(datetime_df, conn, cursor, "Datetime", ["datetime", "hour", "day", "month", "year", "is_weekend"], "datetime_id")
+    datetime_df = get_or_create_ids(datetime_df, engine, cursor, "Datetime", ["datetime", "hour", "day", "month", "year", "is_weekend"], "datetime_id")
 
     parameter_df = full_DF[["PARAMETRO", "unit", "Type"]].drop_duplicates().reset_index(drop=True)
     parameter_df.rename(columns={"PARAMETRO": "parameter_name", "Type": "type"}, inplace=True)
-    parameter_df = get_or_create_ids(parameter_df, conn, cursor, "Parameter", ["parameter_name", "unit", "type"], "parameter_id")
+    parameter_df = get_or_create_ids(parameter_df, engine, cursor, "Parameter", ["parameter_name", "unit", "type"], "parameter_id")
 
     full_DF.rename(columns={"LOCAL": "name", "LATITUDE": "latitude", "LONGITUDE": "longitude", "PARAMETRO": "parameter_name", "Type": "type"}, inplace=True)
 
@@ -38,7 +42,7 @@ def write_to_postgres(full_DF, table_name):
     fact_df = full_DF[["datetime_id", "location_id", "parameter_id", "VALOR", "unit"]].rename(columns={"VALOR": "value"})
     fact_df = fact_df.drop_duplicates(subset=["datetime_id", "location_id", "parameter_id"])
 
-    validate_fact(fact_df, conn)
+    validate_fact(fact_df, engine)
 
     #for row in data:
     #    cur.execute(f"INSERT INTO {table_name} VALUES (%s, %s, %s)", row)
@@ -49,11 +53,11 @@ def write_to_postgres(full_DF, table_name):
 
 
 
-def get_or_create_ids(df, conn, cursor, table_name, unique_cols, id_col):
+def get_or_create_ids(df, engine, cursor, table_name, unique_cols, id_col):
     if table_name == "Datetime":
-        existing = pd.read_sql(f"SELECT {id_col}, {', '.join(unique_cols)} FROM {table_name}", conn.engine, parse_dates=["datetime"])
+        existing = pd.read_sql(f"SELECT {id_col}, {', '.join(unique_cols)} FROM {table_name}", engine, parse_dates=["datetime"])
     else:
-        existing = pd.read_sql(f"SELECT {id_col}, {', '.join(unique_cols)} FROM {table_name}", conn.engine)
+        existing = pd.read_sql(f"SELECT {id_col}, {', '.join(unique_cols)} FROM {table_name}",engine)
 
     merged = df.merge(existing, on=unique_cols, how="left")
     new_rows = merged[merged[id_col].isna()].copy()
@@ -64,7 +68,7 @@ def get_or_create_ids(df, conn, cursor, table_name, unique_cols, id_col):
         new_rows[id_col] = range(max_id + 1, max_id + 1 + len(new_rows))
         insert_cols = [id_col] + unique_cols
         try:
-            new_rows[insert_cols].to_sql(table_name, conn.engine, index=False, if_exists="append", method='multi')
+            new_rows[insert_cols].to_sql(table_name, engine, index=False, if_exists="append", method='multi')
         except Exception as e:
             print(f"Error inserting into {table_name}: {e}")
             raise
@@ -74,16 +78,16 @@ def get_or_create_ids(df, conn, cursor, table_name, unique_cols, id_col):
 
 
 
-def validate_fact(fact_df, db_connector):
+def validate_fact(fact_df, engine):
     query = "SELECT datetime_id, location_id, parameter_id FROM Fact_Measurements"
-    existing_facts = pd.read_sql(query, db_connector.engine)
+    existing_facts = pd.read_sql(query, engine)
 
     fact_df = fact_df.merge(existing_facts, on=["datetime_id", "location_id", "parameter_id"], how="left", indicator=True)
     fact_df = fact_df[fact_df["_merge"] == "left_only"].drop(columns=["_merge"])
 
     if not fact_df.empty:
         print(f"Fact_Measurements: {fact_df.shape[0]} new rows added.")
-        fact_df.to_sql("Fact_Measurements", db_connector.engine, index=False, if_exists="append", method='multi')
+        fact_df.to_sql("Fact_Measurements", engine, index=False, if_exists="append", method='multi')
     else:
         print("No new measurements to insert.")
 
