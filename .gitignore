@@ -4,3 +4,4 @@ data/*
 *.csv
 *.xls
 *.xlsx
+**/venv/*
