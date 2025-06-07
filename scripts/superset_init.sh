@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Install required database driver
+pip install psycopg2-binary
+
 # Inicializa o banco de dados do Superset (migrations)
 superset db upgrade
 
