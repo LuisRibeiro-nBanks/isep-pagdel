@@ -86,6 +86,37 @@ docker exec -it postgres psql -U admin -d postgresDB
 
 <br>
 
+10. If you want to run **Superset**, firstly, access the Docker Container:
+```
+docker exec -it superset bash
+```
+
+<br>
+
+11. When inside of the container, run the command:
+```
+pip install psycopg2-binary
+```
+
+<br>
+
+12. After the command is executed, you can access Superset UI (credentials: `admin` | `admin`):
+```
+http://localhost:8088/
+```
+
+<br>
+
+13. If the Postgres DB connection is failing:
+
+- Click on the "+" button at the top of the page.
+- Select the "Data" option.
+- Select the "Create dataset" option.
+- Select the "Postgres" option.
+- Fill the required fields and create the option.
+
+<br>
+
 ##### 1.3. Credentials
 **Superset:**
 - User: `admin`
